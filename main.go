@@ -16,7 +16,9 @@ import (
 
 // LockData presents passwords for lock stage
 type LockData struct {
-	Code string `json:"code" validate:"required,alphanum,gte=3,lte=8"`
+	Code     string `json:"code" validate:"required,alphanum,gte=3,lte=8"`
+	LockedBy string `json:"locked_by" validate:"required,alphaunicode,gt=0,lte=100"`
+	Comment  string `json:"comment,omitempty" validate:"lte=500"`
 }
 
 // StandartJSONResponse implement standart json-response
@@ -32,6 +34,8 @@ type Stage struct {
 	Name     string `gorm:"type:varchar(80);unique;not null" json:"name" validate:"required,alphanum,gt=0,lte=15"`
 	LockCode string `gorm:"type:varchar(80)" json:"code"`
 	Locked   bool   `gorm:"default:false;not null" json:"locked"`
+	LockedBy string `gorm:"type:varchar(80)" json:"locked_by"`
+	Comment  string `gorm:"type:varchar(500)" json:"comment"`
 }
 
 // CustomValidator for echo
@@ -125,6 +129,8 @@ func LockStageHandler(ctx echo.Context) error {
 
 	stage.Locked = true
 	stage.LockCode = lockData.Code
+	stage.Comment = lockData.Comment
+	stage.LockedBy = lockData.LockedBy
 
 	if err := db.Save(stage).Error; err != nil {
 		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
@@ -135,8 +141,7 @@ func LockStageHandler(ctx echo.Context) error {
 
 	return ctx.JSON(http.StatusOK, &StandartJSONResponse{
 		Status:  "success",
-		Message: "Ok",
-		Data:    fmt.Sprintf("Stage %s was successfully locked", stage.Name),
+		Message: fmt.Sprintf("Stage %s was successfully locked", stage.Name),
 	})
 }
 
@@ -182,6 +187,8 @@ func UnLockStageHandler(ctx echo.Context) error {
 
 	stage.Locked = false
 	stage.LockCode = ""
+	stage.Comment = ""
+	stage.LockedBy = ""
 
 	if err := db.Save(stage).Error; err != nil {
 		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
@@ -291,6 +298,7 @@ func main() {
 	app.Validator = &CustomValidator{validator: validator.New()}
 
 	app.Use(middleware.Logger())
+	app.Use(middleware.CORS())
 
 	authMiddleware := middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
 		KeyLookup: "header:X-Admin-Auth",
