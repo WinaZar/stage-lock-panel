@@ -1,5 +1,6 @@
 [settings]
 db = "./stagelock.db"
 admin-auth-key = "admin-key"
+static-path = "./interface/dist"
 port = 1323
 debug = true

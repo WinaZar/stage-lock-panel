@@ -53,7 +53,7 @@ func CreateConn() *gorm.DB {
 	dbPath := viper.GetString("settings.db")
 	db, err := gorm.Open("sqlite3", dbPath)
 	if err != nil {
-		panic("failed to connect db")
+		log.Fatalf("failed to connect db: %s", err.Error())
 	}
 
 	return db
@@ -299,6 +299,11 @@ func main() {
 
 	app.Use(middleware.Logger())
 	app.Use(middleware.CORS())
+
+	if staticPath := viper.GetString("settings.static-path"); len(staticPath) > 0 {
+		app.Static("/static", staticPath)
+		app.File("/", fmt.Sprintf("%s/index.html", staticPath))
+	}
 
 	authMiddleware := middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
 		KeyLookup: "header:X-Admin-Auth",
