@@ -17,7 +17,7 @@ import (
 
 // LockData presents passwords for lock stage
 type LockData struct {
-	Code     string `json:"code" validate:"required,alphanum,gte=3,lte=8"`
+	Code     string `json:"code" validate:"omitempty,alphanum,lte=8"`
 	LockedBy string `json:"locked_by" validate:"required,alphaunicode,gt=0,lte=100"`
 	Comment  string `json:"comment,omitempty" validate:"lte=500"`
 }

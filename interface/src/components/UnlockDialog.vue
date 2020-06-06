@@ -5,7 +5,7 @@
     </header>
     <section class="modal-card-body">
       <b-field
-        label="Lock Code"
+        label="Lock Code (Optional)"
         :type="getLableType('lockCode')"
         :message="getLabelMessage('lockCode')"
       >
@@ -28,7 +28,7 @@
 </template>
 
 <script>
-import { required, minLength, maxLength } from 'vuelidate/lib/validators'
+import { minLength, maxLength } from 'vuelidate/lib/validators'
 export default {
   name: 'UnLockDialog',
   props: {
@@ -41,7 +41,6 @@ export default {
   },
   validations: {
     lockCode: {
-      required,
       minLength: minLength(3),
       maxLength: maxLength(8)
     }
@@ -56,11 +55,9 @@ export default {
       let validation = this.$v[name]
       if (validation.$error) {
         let message = 'Invalid field value'
-        if (!validation.required) {
-          message = 'Field is required'
-        } else if (!validation.minLength) {
+        if (validation.minLength === false) {
           message = `Field must have at least ${validation.$params.minLength.min} letters`
-        } else if (!validation.maxLength) {
+        } else if (validation.maxLength === false) {
           message = `Field must have less than ${validation.$params.maxLength.max} letters`
         }
         return message

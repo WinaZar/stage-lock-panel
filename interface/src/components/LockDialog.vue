@@ -5,7 +5,7 @@
     </header>
     <section class="modal-card-body">
       <b-field
-        label="Lock Code"
+        label="Lock Code (Optional)"
         :type="getLableType('lockCode')"
         :message="getLabelMessage('lockCode')"
       >
@@ -31,7 +31,7 @@
         </b-input>
       </b-field>
       <b-field
-        label="Lock Comment"
+        label="Lock Comment (Optional)"
         :type="getLableType('lockComment')"
         :message="getLabelMessage('lockComment')"
       >
@@ -69,7 +69,6 @@ export default {
   },
   validations: {
     lockCode: {
-      required,
       minLength: minLength(3),
       maxLength: maxLength(8)
     },
@@ -92,11 +91,11 @@ export default {
       let validation = this.$v[name]
       if (validation.$error) {
         let message = 'Invalid field value'
-        if (!validation.required) {
+        if (validation.required === false) {
           message = 'Field is required'
-        } else if (!validation.minLength) {
+        } else if (validation.minLength === false) {
           message = `Field must have at least ${validation.$params.minLength.min} letters`
-        } else if (!validation.maxLength) {
+        } else if (validation.maxLength === false) {
           message = `Field must have less than ${validation.$params.maxLength.max} letters`
         }
         return message
