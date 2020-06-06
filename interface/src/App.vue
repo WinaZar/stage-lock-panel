@@ -1,36 +1,51 @@
 <template>
-  <div id="app" class="container">
-    <div class="section has-text-centered">
-      <h1 class="title is-1">Stage servers status panel</h1>
-    </div>
-    <div class="stage section" v-for="item in stages" :key="item.name">
-      <div class="card">
-        <header class="card-header">
-          <p class="card-header-title">{{item.name}}</p>
-        </header>
-        <div class="card-content">
-          <div class="content">
-            <p>Status: <span
-                        class="status"
-                        :class="[item.locked ? 'has-background-danger': 'has-background-success']"
-                        >
-                          {{item.locked ? 'Locked': 'Free'}}
-                      </span>
-            </p>
-            <p v-if="item.locked">Locked by <b>{{item.locked_by}}</b></p>
-            <p v-if="item.comment.length > 0">Comment: {{item.comment}}</p>
-          </div>
+  <div id="app">
+    <b-navbar class="is-dark">
+      <template slot="brand">
+            <b-navbar-item>
+                <img
+                    src="./assets/logo.png"
+                    alt="Stage Lock Panel"
+                >
+                <p>Stage Lock Panel</p>
+            </b-navbar-item>
+        </template>
+    </b-navbar>
+    <main>
+      <div class="container">
+        <div class="section has-text-centered">
+          <h1 class="title is-1">Stage servers status panel</h1>
         </div>
-        <footer class="card-footer">
-          <div class="card-footer-item">
-            <div class="buttons">
-              <b-button @click="lockDialog(item.name)" type="is-success" :disabled="item.locked">Lock</b-button>
-              <b-button @click="unlockDialog(item.name)" type="is-danger" :disabled="!item.locked">Unlock</b-button>
-            </div>
-          </div>
-        </footer>
+        <table class="table is-fullwidth">
+          <thead>
+            <td class="has-text-centered has-text-weight-semibold">Name</td>
+            <td class="has-text-centered has-text-weight-semibold">Lock status</td>
+            <td class="has-text-centered has-text-weight-semibold">Lock owner</td>
+            <td class="has-text-centered has-text-weight-semibold">Comment</td>
+            <td class="has-text-centered has-text-weight-semibold">Actions</td>
+          </thead>
+          <tbody>
+            <tr v-for="item in stages" :key="item.name">
+              <td class="has-text-centered">{{item.name}}</td>
+              <td
+                class="has-text-centered"
+                :class="[item.locked ? 'has-background-danger': 'has-background-success']"
+              >{{item.locked ? 'Locked': 'Free'}}</td>
+              <td class="has-text-centered">{{item.locked_by || '-'}}</td>
+              <td class="has-text-centered">{{item.comment || '-'}}</td>
+              <td class="has-text-centered">
+                <div class="buttons" style="justify-content: center;">
+                  <b-button @click="lockDialog(item.name)" type="is-success" :disabled="item.locked">Lock</b-button>
+                  <b-button @click="unlockDialog(item.name)" type="is-danger" :disabled="!item.locked">Unlock</b-button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </div>
+    </main>
+    <footer class="footer has-background-dark has-text-white">
+    </footer>
   </div>
 </template>
 
@@ -87,12 +102,14 @@ export default {
 </script>
 
 <style lang="css">
-  .stage.section {
-    padding: 1rem 1.5rem;
-  }
 
-  span.status {
-    padding: 0.5rem;
+  #app {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+  }
+  main {
+    flex: 1;
   }
 
 </style>
