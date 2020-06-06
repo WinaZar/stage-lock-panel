@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jinzhu/gorm"
@@ -48,6 +49,12 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 	return cv.validator.Struct(i)
 }
 
+// CustomContext for echo with db connection
+type CustomContext struct {
+	echo.Context
+	dbConn *gorm.DB
+}
+
 // CreateConn func create new connection to database
 func CreateConn() *gorm.DB {
 	dbPath := viper.GetString("settings.db")
@@ -60,7 +67,7 @@ func CreateConn() *gorm.DB {
 }
 
 // GetAndValidateLockData func bind lockData and validate it
-func GetAndValidateLockData(ctx echo.Context, lockData *LockData) error {
+func GetAndValidateLockData(ctx *CustomContext, lockData *LockData) error {
 	if err := ctx.Bind(lockData); err != nil {
 		return err
 	}
@@ -76,8 +83,8 @@ func GetAndValidateLockData(ctx echo.Context, lockData *LockData) error {
 // GetStagesHandler handler
 func GetStagesHandler(ctx echo.Context) error {
 
-	db := CreateConn()
-	defer db.Close()
+	context := ctx.(*CustomContext)
+	db := context.dbConn
 
 	stages := []*Stage{}
 
@@ -87,7 +94,7 @@ func GetStagesHandler(ctx echo.Context) error {
 		stage.LockCode = "hidden"
 	}
 
-	return ctx.JSON(http.StatusOK, &StandartJSONResponse{
+	return context.JSON(http.StatusOK, &StandartJSONResponse{
 		Status:  "success",
 		Message: "Ok",
 		Data:    stages,
@@ -97,31 +104,29 @@ func GetStagesHandler(ctx echo.Context) error {
 // LockStageHandler intended for locking stage instance
 func LockStageHandler(ctx echo.Context) error {
 
-	stageName := ctx.Param("name")
-
+	context := ctx.(*CustomContext)
+	db := context.dbConn
+	stageName := context.Param("name")
 	lockData := &LockData{}
 
-	if err := GetAndValidateLockData(ctx, lockData); err != nil {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+	if err := GetAndValidateLockData(context, lockData); err != nil {
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 	}
 
-	db := CreateConn()
-	defer db.Close()
-
 	stage := &Stage{}
 
 	if err := db.Where("name = ?", stageName).First(stage).Error; err != nil {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 	}
 
 	if stage.Locked {
-		return ctx.JSON(http.StatusForbidden, &StandartJSONResponse{
+		return context.JSON(http.StatusForbidden, &StandartJSONResponse{
 			Status:  "error",
 			Message: fmt.Sprintf("Stage %s already locked", stage.Name),
 		})
@@ -133,13 +138,13 @@ func LockStageHandler(ctx echo.Context) error {
 	stage.LockedBy = lockData.LockedBy
 
 	if err := db.Save(stage).Error; err != nil {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 	}
 
-	return ctx.JSON(http.StatusOK, &StandartJSONResponse{
+	return context.JSON(http.StatusOK, &StandartJSONResponse{
 		Status:  "success",
 		Message: fmt.Sprintf("Stage %s was successfully locked", stage.Name),
 	})
@@ -148,38 +153,36 @@ func LockStageHandler(ctx echo.Context) error {
 // UnLockStageHandler intended for unlocking stage instance
 func UnLockStageHandler(ctx echo.Context) error {
 
-	stageName := ctx.Param("name")
-
+	context := ctx.(*CustomContext)
+	db := context.dbConn
+	stageName := context.Param("name")
 	lockData := &LockData{}
 
-	if err := GetAndValidateLockData(ctx, lockData); err != nil {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+	if err := GetAndValidateLockData(context, lockData); err != nil {
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 	}
 
-	db := CreateConn()
-	defer db.Close()
-
 	stage := &Stage{}
 
 	if err := db.Where("name = ?", stageName).First(stage).Error; err != nil {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 	}
 
 	if stage.Locked == false {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: fmt.Sprintf("Stage %s not locked", stage.Name),
 		})
 	}
 
 	if lockData.Code != stage.LockCode {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: "Invalid lock code",
 		})
@@ -191,13 +194,13 @@ func UnLockStageHandler(ctx echo.Context) error {
 	stage.LockedBy = ""
 
 	if err := db.Save(stage).Error; err != nil {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 	}
 
-	return ctx.JSON(http.StatusOK, &StandartJSONResponse{
+	return context.JSON(http.StatusOK, &StandartJSONResponse{
 		Status:  "success",
 		Message: fmt.Sprintf("Stage %s was successfully unlocked", stage.Name),
 	})
@@ -205,33 +208,34 @@ func UnLockStageHandler(ctx echo.Context) error {
 
 // AddStageHandler intened for created new stage server record
 func AddStageHandler(ctx echo.Context) error {
+
+	context := ctx.(*CustomContext)
+	db := context.dbConn
+
 	stage := &Stage{}
 
-	if err := ctx.Bind(stage); err != nil {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+	if err := context.Bind(stage); err != nil {
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 	}
 
-	if err := ctx.Validate(stage); err != nil {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+	if err := context.Validate(stage); err != nil {
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 	}
-
-	db := CreateConn()
-	defer db.Close()
 
 	if err := db.Create(stage).Error; err != nil {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 	}
 
-	return ctx.JSON(http.StatusOK, &StandartJSONResponse{
+	return context.JSON(http.StatusOK, &StandartJSONResponse{
 		Status:  "success",
 		Message: "New stage created",
 		Data:    stage,
@@ -242,29 +246,29 @@ func AddStageHandler(ctx echo.Context) error {
 // DeleteStageHandler intended for deleting stage instance
 func DeleteStageHandler(ctx echo.Context) error {
 
-	stageName := ctx.Param("name")
+	context := ctx.(*CustomContext)
+	db := context.dbConn
 
-	db := CreateConn()
-	defer db.Close()
+	stageName := context.Param("name")
 
 	stage := &Stage{}
 
 	if err := db.Where("name = ?", stageName).First(stage).Error; err != nil {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 	}
 
 	if stage.DeletedAt != nil {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: fmt.Sprintf("Stage %s already deleted", stageName),
 		})
 	}
 
 	if stage.Locked {
-		return ctx.JSON(http.StatusBadRequest, &StandartJSONResponse{
+		return context.JSON(http.StatusBadRequest, &StandartJSONResponse{
 			Status:  "error",
 			Message: fmt.Sprintf("Stage %s locked. Unlock it first", stageName),
 		})
@@ -272,7 +276,7 @@ func DeleteStageHandler(ctx echo.Context) error {
 
 	db.Delete(stage)
 
-	return ctx.JSON(http.StatusOK, &StandartJSONResponse{
+	return context.JSON(http.StatusOK, &StandartJSONResponse{
 		Status:  "success",
 		Message: fmt.Sprintf("Stage %s was successfully deleted", stageName),
 	})
@@ -290,8 +294,13 @@ func main() {
 	}
 
 	db := CreateConn()
+	defer db.Close()
+
+	db.DB().SetMaxIdleConns(10)
+	db.DB().SetMaxOpenConns(50)
+	db.DB().SetConnMaxLifetime(time.Hour)
+
 	db.AutoMigrate(&Stage{})
-	db.Close()
 
 	app := echo.New()
 	app.Debug = viper.GetBool("settings.debug")
@@ -299,6 +308,12 @@ func main() {
 
 	app.Use(middleware.Logger())
 	app.Use(middleware.CORS())
+	app.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			customContext := &CustomContext{c, db}
+			return next(customContext)
+		}
+	})
 
 	if staticPath := viper.GetString("settings.static-path"); len(staticPath) > 0 {
 		app.Static("/static", staticPath)
