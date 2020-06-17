@@ -1,52 +1,112 @@
 <template>
-  <div id="app">
-    <b-navbar class="is-dark">
-      <template slot="brand">
-            <b-navbar-item>
-                <img
-                    src="./assets/logo.png"
-                    alt="Stage Lock Panel"
-                >
-                <p>Stage Lock Panel</p>
-            </b-navbar-item>
-        </template>
-    </b-navbar>
-    <main>
-      <div class="container">
-        <div class="section has-text-centered">
-          <h1 class="title is-1">Stage servers status panel</h1>
-        </div>
-        <table class="table is-fullwidth">
-          <thead>
-            <td class="has-text-centered has-text-weight-semibold">Name</td>
-            <td class="has-text-centered has-text-weight-semibold">Lock status</td>
-            <td class="has-text-centered has-text-weight-semibold">Lock owner</td>
-            <td class="has-text-centered has-text-weight-semibold">Comment</td>
-            <td class="has-text-centered has-text-weight-semibold">Actions</td>
-          </thead>
-          <tbody>
-            <tr v-for="item in stages" :key="item.name">
-              <td class="has-text-centered">{{item.name}}</td>
-              <td
-                class="has-text-centered"
-                :class="[item.locked ? 'has-background-danger': 'has-background-success']"
-              >{{item.locked ? 'Locked': 'Free'}}</td>
-              <td class="has-text-centered">{{item.locked_by || '-'}}</td>
-              <td class="has-text-centered">{{item.comment || '-'}}</td>
-              <td class="has-text-centered">
-                <div class="buttons" style="justify-content: center;">
-                  <b-button @click="lockDialog(item.name)" type="is-success" :disabled="item.locked">Lock</b-button>
-                  <b-button @click="unlockDialog(item.name)" type="is-danger" :disabled="!item.locked">Unlock</b-button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </main>
-    <footer class="footer has-background-dark has-text-white">
-    </footer>
-  </div>
+  <v-app id="inspire">
+    <v-navigation-drawer
+      v-model="drawer"
+      app
+    >
+      <v-list dense>
+        <v-list-item link>
+          <v-list-item-action>
+            <v-icon>mdi-home</v-icon>
+          </v-list-item-action>
+          <v-list-item-content>
+            <v-list-item-title>Home</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+      </v-list>
+    </v-navigation-drawer>
+
+    <v-app-bar
+      app
+      color="indigo"
+      dark
+    >
+      <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
+      <v-toolbar-title><v-icon medium>lock_open</v-icon> Stage Lock Panel</v-toolbar-title>
+    </v-app-bar>
+
+    <v-main>
+      <v-container fluid>
+        <v-row
+          align="center"
+          justify="center"
+        >
+          <v-col>
+            <v-simple-table>
+              <template v-slot:default>
+                <thead>
+                  <tr class="text-center">
+                    <td>Name</td>
+                    <td>Lock status</td>
+                    <td>Lock owner</td>
+                    <td>Comment</td>
+                    <td>Actions</td>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="text-center" v-for="item in stages" :key="item.name">
+                    <td>{{item.name}}</td>
+                    <td>
+                      <v-sheet :color="item.locked ? 'red': 'green'" rounded :elevation="3">{{item.locked ? 'Locked': 'Free'}}</v-sheet>
+                    </td>
+                    <td>{{item.locked_by || '-'}}</td>
+                    <td>{{item.comment || '-'}}</td>
+                    <td>
+                      <div>
+                        <v-btn @click="openLockDialog(item.name)" class="ma-1 green darken-1" small :disabled="item.locked">Lock</v-btn>
+                        <v-btn @click="openUnLockDialog(item.name)" class="ma-1 red darken-1" small :disabled="!item.locked">Unlock</v-btn>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </template>
+            </v-simple-table>
+          </v-col>
+        </v-row>
+        <lock-dialog
+          :active="lockDialog"
+          :stage="currentStage"
+          @close="closeLockDialog"
+          @notify="showNotification"
+          @refresh="fetchStagesStatuses"
+        >
+        </lock-dialog>
+        <un-lock-dialog
+          :active="unLockDialog"
+          :stage="currentStage"
+          @close="closeUnLockDialog"
+          @notify="showNotification"
+          @refresh="fetchStagesStatuses"
+        >
+        </un-lock-dialog>
+        <v-snackbar
+          right
+          top
+          v-model="notification"
+          :color="notificationProps.color"
+          timeout="3000"
+        >
+          {{notificationProps.text}}
+          <template v-slot:action="{ attrs }">
+            <v-btn
+              dark
+              text
+              v-bind="attrs"
+              @click="closeNotification"
+            >
+              Close
+            </v-btn>
+          </template>
+        </v-snackbar>
+      </v-container>
+    </v-main>
+    <v-footer
+      color="indigo"
+      app
+    >
+      <span class="white--text">&copy; 2020</span>
+    </v-footer>
+  </v-app>
 </template>
 
 <script>
@@ -54,45 +114,53 @@ import LockDialog from '@/components/LockDialog.vue'
 import UnLockDialog from '@/components/UnlockDialog.vue'
 
 export default {
-  name: 'App',
-  data () {
-    return {
-      backUrl: process.env.VUE_APP_BACKEND_URL,
-      stages: []
-    }
+  data: () => ({
+    drawer: false,
+    backUrl: process.env.VUE_APP_BACKEND_URL,
+    stages: [],
+    lockDialog: false,
+    unLockDialog: false,
+    notification: false,
+    notificationProps: {
+      color: null,
+      text: null
+    },
+    currentStage: null
+  }),
+  components: {
+    LockDialog,
+    UnLockDialog
   },
   methods: {
-    async lockDialog (stageName) {
-      this.$buefy.modal.open({
-        parent: this,
-        component: LockDialog,
-        hasModalCard: true,
-        trapFocus: true,
-        props: {
-          stage: stageName
-        },
-        events: {
-          refresh: this.fetchStagesStatuses
-        }
-      })
+    closeNotification () {
+      this.notification = false
+      this.notificationProps.color = null
+      this.notificationProps.text = null
     },
-    async unlockDialog (stageName) {
-      this.$buefy.modal.open({
-        parent: this,
-        component: UnLockDialog,
-        hasModalCard: true,
-        trapFocus: true,
-        props: {
-          stage: stageName
-        },
-        events: {
-          refresh: this.fetchStagesStatuses
-        }
-      })
+    showNotification (text, color) {
+      this.notification = true
+      this.notificationProps.color = color
+      this.notificationProps.text = text
     },
     async fetchStagesStatuses () {
       let response = await this.$http.get('/stages')
       this.stages = response.data.data
+    },
+    closeLockDialog () {
+      this.lockDialog = false
+      this.currentStage = null
+    },
+    closeUnLockDialog () {
+      this.unLockDialog = false
+      this.currentStage = null
+    },
+    openLockDialog (stage) {
+      this.lockDialog = true
+      this.currentStage = stage
+    },
+    openUnLockDialog (stage) {
+      this.unLockDialog = true
+      this.currentStage = stage
     }
   },
   async created () {
@@ -100,16 +168,3 @@ export default {
   }
 }
 </script>
-
-<style lang="css">
-
-  #app {
-    display: flex;
-    min-height: 100vh;
-    flex-direction: column;
-  }
-  main {
-    flex: 1;
-  }
-
-</style>

@@ -1,56 +1,50 @@
 <template>
-  <div class="modal-card">
-    <header class="modal-card-head">
-      <p class="modal-card-title">Lock {{stage}}</p>
-    </header>
-    <section class="modal-card-body">
-      <b-field
-        label="Lock Code (Optional)"
-        :type="getLableType('lockCode')"
-        :message="getLabelMessage('lockCode')"
-      >
-        <b-input
-          placeholder="Lock Code"
-          v-model.trim="$v.lockCode.$model"
-          type="text"
-          name="lockCode"
-        >
-        </b-input>
-      </b-field>
-      <b-field
-        label="Lock Owner"
-        :type="getLableType('lockOwner')"
-        :message="getLabelMessage('lockOwner')"
-      >
-        <b-input
-          placeholder="Lock Owner"
-          v-model.trim="$v.lockOwner.$model"
-          type="text"
-          name="lockOwner"
-        >
-        </b-input>
-      </b-field>
-      <b-field
-        label="Lock Comment (Optional)"
-        :type="getLableType('lockComment')"
-        :message="getLabelMessage('lockComment')"
-      >
-        <b-input
-          placeholder="Lock Comment"
-          v-model.trim="$v.lockComment.$model"
-          type="textarea"
-          name="lockComment"
-        >
-        </b-input>
-      </b-field>
-    </section>
-    <footer class="modal-card-foot">
-      <div class="buttons">
-        <b-button class="is-success" @click="lock">Lock</b-button>
-        <b-button class="is-primary" @click="$parent.close()">Close</b-button>
-      </div>
-    </footer>
-  </div>
+  <v-row justify="center">
+    <v-dialog v-model="active" persistent max-width="600px">
+      <v-card>
+        <v-card-title>
+          <span class="headline">Lock <span class="font-weight-bold">{{stage}}</span></span>
+        </v-card-title>
+        <v-card-text>
+          <v-container>
+            <v-row>
+              <v-col cols="12">
+                <v-text-field
+                  label="Lock Code"
+                  v-model.trim="$v.lockCode.$model"
+                  :error-messages="fieldErrors.lockCode"
+                >
+                </v-text-field>
+              </v-col>
+              <v-col cols="12">
+                <v-text-field
+                  label="Lock Owner*"
+                  v-model.trim="$v.lockOwner.$model"
+                  :error-messages="fieldErrors.lockOwner"
+                  required
+                >
+                </v-text-field>
+              </v-col>
+              <v-col cols="12">
+                <v-textarea
+                  label="Lock Comment"
+                  v-model.trim="$v.lockComment.$model"
+                  :error-messages="fieldErrors.lockComment"
+                >
+                </v-textarea>
+              </v-col>
+            </v-row>
+          </v-container>
+          <small>*indicates required field</small>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="blue darken-1" text @click="close">Close</v-btn>
+          <v-btn color="blue darken-1" text @click="lock">Lock</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </v-row>
 </template>
 
 <script>
@@ -58,7 +52,8 @@ import { required, minLength, maxLength } from 'vuelidate/lib/validators'
 export default {
   name: 'LockDialog',
   props: {
-    stage: String
+    stage: String,
+    active: Boolean
   },
   data () {
     return {
@@ -81,13 +76,17 @@ export default {
       maxLength: maxLength(500)
     }
   },
-  methods: {
-    getLableType (name) {
-      if (this.$v[name].$error) {
-        return 'is-danger'
+  computed: {
+    fieldErrors () {
+      let errors = {}
+      for (let key of Object.keys(this.$v.$params)) {
+        errors[key] = this.getErrorMessage(key)
       }
-    },
-    getLabelMessage (name) {
+      return errors
+    }
+  },
+  methods: {
+    getErrorMessage (name) {
       let validation = this.$v[name]
       if (validation.$error) {
         let message = 'Invalid field value'
@@ -101,13 +100,16 @@ export default {
         return message
       }
     },
+    close () {
+      this.lockCode = ''
+      this.lockOwner = ''
+      this.lockComment = ''
+      this.$emit('close')
+    },
     async lock () {
       this.$v.$touch()
       if (this.$v.$invalid) {
-        this.$buefy.notification.open({
-          message: 'Check form fields',
-          type: 'is-danger'
-        })
+        this.$emit('notify', 'Check form fields', 'red')
         return false
       }
       let data = null
@@ -121,12 +123,9 @@ export default {
       } catch (e) {
         data = e.response.data
       }
-      this.$buefy.notification.open({
-        message: data.message,
-        type: data.status === 'error' ? 'is-danger' : 'is-success'
-      })
+      this.$emit('notify', data.message, data.status === 'error' ? 'red' : 'green')
       this.$emit('refresh')
-      this.$parent.close()
+      this.close()
     }
   }
 }

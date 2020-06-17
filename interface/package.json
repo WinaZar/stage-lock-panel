@@ -9,11 +9,11 @@
   },
   "dependencies": {
     "axios": "^0.19.2",
-    "buefy": "^0.8.20",
     "core-js": "^3.6.5",
     "vue": "^2.6.11",
     "vue-axios": "^2.1.5",
-    "vuelidate": "^0.7.5"
+    "vuelidate": "^0.7.5",
+    "vuetify": "^2.2.11"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~4.4.0",
@@ -28,7 +28,11 @@
     "eslint-plugin-standard": "^4.0.0",
     "eslint-plugin-vue": "^6.2.2",
     "lint-staged": "^9.5.0",
-    "vue-template-compiler": "^2.6.11"
+    "sass": "^1.19.0",
+    "sass-loader": "^8.0.0",
+    "vue-cli-plugin-vuetify": "~2.0.5",
+    "vue-template-compiler": "^2.6.11",
+    "vuetify-loader": "^1.3.0"
   },
   "eslintConfig": {
     "root": true,
@@ -44,7 +48,7 @@
     },
     "rules": {
       "prefer-const": "off",
-      "no-debugger":"off"
+      "no-debugger": "off"
     }
   },
   "browserslist": [
