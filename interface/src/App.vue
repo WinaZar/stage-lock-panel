@@ -40,6 +40,7 @@
                     <td>Lock status</td>
                     <td>Lock owner</td>
                     <td>Comment</td>
+                    <td>Last Action</td>
                     <td>Actions</td>
                   </tr>
                 </thead>
@@ -51,10 +52,12 @@
                     </td>
                     <td>{{item.locked_by || '-'}}</td>
                     <td>{{item.comment || '-'}}</td>
+                    <td>{{moment(item.UpdatedAt).format('HH:mm:ss DD.MM.YYYY')}}</td>
                     <td>
                       <div>
-                        <v-btn @click="openLockDialog(item.name)" class="ma-1 green darken-1" small :disabled="item.locked">Lock</v-btn>
-                        <v-btn @click="openUnLockDialog(item.name)" class="ma-1 red darken-1" small :disabled="!item.locked">Unlock</v-btn>
+                        <v-btn @click.stop="openLockDialog(item.name)" class="ma-1 green darken-1" small :disabled="item.locked">Lock</v-btn>
+                        <v-btn @click.stop="openUnLockDialog(item.name)" class="ma-1 red darken-1" small :disabled="!item.locked">Unlock</v-btn>
+                        <v-btn @click.stop="openHistory(item.name)" class="ma-1 blue darken-1" small>History</v-btn>
                       </div>
                     </td>
                   </tr>
@@ -79,6 +82,12 @@
           @refresh="fetchStagesStatuses"
         >
         </un-lock-dialog>
+        <history
+          :active="history"
+          :stage="currentStage"
+          @close="closeHistory"
+        >
+        </history>
         <v-snackbar
           right
           top
@@ -110,17 +119,21 @@
 </template>
 
 <script>
+import moment from 'moment'
+import History from '@/components/History.vue'
 import LockDialog from '@/components/LockDialog.vue'
 import UnLockDialog from '@/components/UnlockDialog.vue'
 
 export default {
   data: () => ({
     drawer: false,
+    moment: moment,
     backUrl: process.env.VUE_APP_BACKEND_URL,
     stages: [],
     lockDialog: false,
     unLockDialog: false,
     notification: false,
+    history: false,
     notificationProps: {
       color: null,
       text: null
@@ -129,7 +142,8 @@ export default {
   }),
   components: {
     LockDialog,
-    UnLockDialog
+    UnLockDialog,
+    History
   },
   methods: {
     closeNotification () {
@@ -161,6 +175,14 @@ export default {
     openUnLockDialog (stage) {
       this.unLockDialog = true
       this.currentStage = stage
+    },
+    openHistory (stage) {
+      this.currentStage = stage
+      this.history = true
+    },
+    closeHistory () {
+      this.history = false
+      this.currentStage = null
     }
   },
   async created () {
