@@ -1,8 +1,10 @@
 FROM golang:1.14 as backend
 WORKDIR /build
+COPY ./go.mod ./go.sum ./
+COPY ./handlers ./handlers
+COPY ./models ./models
+COPY ./utils ./utils
 COPY ./main.go .
-COPY ./go.mod .
-COPY ./go.sum .
 RUN GOOS=linux GOARCH=amd64 go build -o main
 
 FROM node:12.17-buster as frontend
