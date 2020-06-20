@@ -14,6 +14,8 @@
             :options.sync="options"
             :server-items-length="totalItems"
             :loading="loading"
+            :must-sort="true"
+            :footer-props="{'items-per-page-options': [10, 20, 30]}"
             class="elevation-1"
         >
           <template v-slot:item.locked_by="{ item }">
@@ -27,8 +29,8 @@
               {{item.action}}
             </v-chip>
           </template>
-          <template v-slot:item.CreatedAt="{ item }">
-            {{ moment(item.CreatedAt).format('HH:mm:ss DD.MM.YYYY') }}
+          <template v-slot:item.created_at="{ item }">
+            {{ moment(item.created_at).format('HH:mm:ss DD.MM.YYYY') }}
           </template>
         </v-data-table>
       </v-card>
@@ -48,14 +50,17 @@ export default {
     return {
       moment: moment,
       headers: [
-        { text: 'ID', value: 'ID', sortable: false },
-        { text: 'Action', value: 'action', sortable: false },
-        { text: 'Locked By', value: 'locked_by', sortable: false },
-        { text: 'Time', value: 'CreatedAt', sortable: false }
+        { text: 'ID', value: 'id', sortable: false },
+        { text: 'Action', value: 'action', sortable: true },
+        { text: 'Locked By', value: 'locked_by', sortable: true },
+        { text: 'Time', value: 'created_at', sortable: true }
       ],
       historyItems: [],
       loading: true,
-      options: {},
+      options: {
+        sortBy: ['created_at'],
+        sortDesc: [true]
+      },
       totalItems: 0
     }
   },
@@ -65,8 +70,13 @@ export default {
       this.$emit('close')
     },
     async getHistory () {
-      const { page, itemsPerPage } = this.options
-      let requestParams = { page: page, 'per-page': itemsPerPage }
+      const { sortBy, sortDesc, page, itemsPerPage } = this.options
+      let requestParams = {
+        page: page,
+        'per-page': itemsPerPage,
+        'sort-by': sortBy[0],
+        'sort-order': sortDesc[0] ? 'desc' : 'asc'
+      }
       try {
         let response = await this.$http.get(`/stages/${this.stage}/history`,
           { params: requestParams }

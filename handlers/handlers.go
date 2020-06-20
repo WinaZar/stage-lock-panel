@@ -266,6 +266,7 @@ func GetStageHistory(ctx echo.Context) error {
 	db := context.DB
 	stageName := context.Param("name")
 	pagination := &utils.PaginationData{}
+	sort := &utils.SortData{}
 
 	if err := context.Bind(pagination); err != nil {
 		context.Logger().Error(err)
@@ -276,6 +277,22 @@ func GetStageHistory(ctx echo.Context) error {
 	}
 
 	if err := context.Validate(pagination); err != nil {
+		return context.JSON(http.StatusBadRequest, &utils.StandartJSONResponse{
+			Status:  "error",
+			Message: "Error occurred",
+			Data:    utils.ParseValidatorErrors(err),
+		})
+	}
+
+	if err := context.Bind(sort); err != nil {
+		context.Logger().Error(err)
+		return context.JSON(http.StatusBadRequest, &utils.StandartJSONResponse{
+			Status:  "error",
+			Message: "Context bind error occurred",
+		})
+	}
+
+	if err := context.Validate(sort); err != nil {
 		return context.JSON(http.StatusBadRequest, &utils.StandartJSONResponse{
 			Status:  "error",
 			Message: "Error occurred",
@@ -302,7 +319,9 @@ func GetStageHistory(ctx echo.Context) error {
 
 	pagination.TotalItems = db.Model(stage).Association("History").Find(&history).Count()
 
-	db.Order("created_at desc").Offset(offset).Limit(pagination.PerPage).Model(stage).Association("History").Find(&history)
+	order := fmt.Sprintf("%s %s", sort.SortBy, sort.SortOrder)
+
+	db.Order(order).Offset(offset).Limit(pagination.PerPage).Model(stage).Association("History").Find(&history)
 
 	return context.JSON(http.StatusOK, &utils.StandartJSONResponse{
 		Status:  "success",
