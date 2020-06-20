@@ -1,6 +1,6 @@
 [settings]
-db = "./stagelock.db"
-admin-auth-key = "admin-key"
-static-path = "./interface/dist"
-port = 1323
-debug = true
+db = "./stagelock.db" # path to sqlite3 db file
+admin-auth-key = "admin-key" # key for admin routest (create/delete stage)
+static-path = "./interface/dist" # path to interface dist (for production only)
+port = 1323 # app port
+debug = true # debug mode
