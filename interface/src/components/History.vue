@@ -16,6 +16,7 @@
             :loading="loading"
             :must-sort="true"
             :footer-props="{'items-per-page-options': [10, 20, 30]}"
+            show-expand
             class="elevation-1"
         >
           <template v-slot:item.locked_by="{ item }">
@@ -31,6 +32,9 @@
           </template>
           <template v-slot:item.created_at="{ item }">
             {{ moment(item.created_at).format('HH:mm:ss DD.MM.YYYY') }}
+          </template>
+          <template v-slot:expanded-item="{ headers, item }">
+            <td :colspan="headers.length">{{ item.comment || '-'}}</td>
           </template>
         </v-data-table>
       </v-card>
@@ -53,7 +57,8 @@ export default {
         { text: 'ID', value: 'id', sortable: false },
         { text: 'Action', value: 'action', sortable: true },
         { text: 'Locked By', value: 'locked_by', sortable: true },
-        { text: 'Time', value: 'created_at', sortable: true }
+        { text: 'Time', value: 'created_at', sortable: true },
+        { text: '', value: 'data-table-expand' }
       ],
       historyItems: [],
       loading: true,
