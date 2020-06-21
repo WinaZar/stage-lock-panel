@@ -52,7 +52,7 @@
                     </td>
                     <td>{{item.locked_by || '-'}}</td>
                     <td>{{item.comment || '-'}}</td>
-                    <td>{{moment(item.UpdatedAt).format('HH:mm:ss DD.MM.YYYY')}}</td>
+                    <td>{{moment(item.updated_at).format('HH:mm:ss DD.MM.YYYY')}}</td>
                     <td>
                       <div>
                         <v-btn @click.stop="openLockDialog(item.name)" class="ma-1 green darken-1" small :disabled="item.locked">Lock</v-btn>
