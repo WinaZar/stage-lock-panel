@@ -3,7 +3,7 @@ package utils
 // LockData presents passwords for lock stage
 type LockData struct {
 	Code     string `json:"code,omitempty" valid:"alphanum,length(0|8)"`
-	LockedBy string `json:"locked_by" valid:"alphanum,length(1|100)"`
+	LockedBy string `json:"locked_by" valid:"length(1|100)"`
 	Comment  string `json:"comment,omitempty" valid:"length(0|500)"`
 }
 
