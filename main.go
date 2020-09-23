@@ -3,22 +3,24 @@ package main
 import (
 	"flag"
 	"fmt"
+	"stage-lock-panel/auth"
 	"stage-lock-panel/handlers"
 	"stage-lock-panel/models"
 	"stage-lock-panel/utils"
 	"time"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/spf13/viper"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 // CreateConn func create new connection to database
 func CreateConn(logger echo.Logger) *gorm.DB {
 	dbPath := viper.GetString("settings.db")
-	db, err := gorm.Open("sqlite3", dbPath)
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+
 	if err != nil {
 		logger.Fatalf("failed to connect db: %s", err.Error())
 	}
@@ -27,6 +29,7 @@ func CreateConn(logger echo.Logger) *gorm.DB {
 }
 
 func main() {
+
 	appConfig := flag.String("config", "./config.toml", "Path to config file (toml)")
 
 	flag.Parse()
@@ -40,11 +43,11 @@ func main() {
 	}
 
 	db := CreateConn(app.Logger)
-	defer db.Close()
+	sqlDB, _ := db.DB()
 
-	db.DB().SetMaxIdleConns(10)
-	db.DB().SetMaxOpenConns(50)
-	db.DB().SetConnMaxLifetime(time.Hour)
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(50)
+	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	db.AutoMigrate(&models.Stage{}, &models.StageHistoryRecord{})
 
@@ -60,6 +63,9 @@ func main() {
 		app.File("/", fmt.Sprintf("%s/index.html", staticPath))
 	}
 
+	auth.GoogleOauthConfig.ClientID = viper.GetString("settings.google.client_id")
+	auth.GoogleOauthConfig.ClientSecret = viper.GetString("settings.google.client_secret")
+
 	authMiddleware := middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
 		KeyLookup: "header:X-Admin-Auth",
 		Validator: func(key string, c echo.Context) (bool, error) {
@@ -73,6 +79,9 @@ func main() {
 	app.POST("/stages/:name/unlock", handlers.UnLockStage)
 	app.POST("/stages/add", handlers.AddStage, authMiddleware)
 	app.DELETE("/stages/:name", handlers.DeleteStage, authMiddleware)
+
+	app.GET("/auth/google", handlers.BeginGoogleAuth)
+	app.GET("/auth/google/callback", handlers.CompleteGoogleAuth)
 
 	serverPort := fmt.Sprintf(":%d", viper.GetInt("settings.port"))
 

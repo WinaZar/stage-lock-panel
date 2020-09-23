@@ -4,3 +4,7 @@ admin-auth-key = "admin-key" # key for admin routest (create/delete stage)
 static-path = "./interface/dist" # path to interface dist (for production only)
 port = 1323 # app port
 debug = true # debug mode
+
+[settings.goolge]
+client_id = "clientid"
+client_secret = "some-secret"

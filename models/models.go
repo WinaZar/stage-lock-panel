@@ -20,7 +20,7 @@ type Stage struct {
 	Locked   bool                 `gorm:"default:false;not null" json:"locked"`
 	LockedBy string               `gorm:"type:varchar(80)" json:"locked_by"`
 	Comment  string               `gorm:"type:varchar(500)" json:"comment"`
-	History  []StageHistoryRecord `gorm:"foreignkey:Stage;association_foreignkey:Name"`
+	History  []StageHistoryRecord `gorm:"foreignkey:Stage;references:Name"`
 }
 
 // StageHistoryRecord presents history of locks/unlocks

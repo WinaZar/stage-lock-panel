@@ -3,8 +3,10 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"stage-lock-panel/auth"
 	"stage-lock-panel/models"
 	"stage-lock-panel/utils"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -317,7 +319,7 @@ func GetStageHistory(ctx echo.Context) error {
 		History    []models.StageHistoryRecord `json:"history"`
 	}
 
-	pagination.TotalItems = db.Model(stage).Association("History").Find(&history).Count()
+	pagination.TotalItems = int(db.Model(stage).Association("History").Count())
 
 	order := fmt.Sprintf("%s %s", sort.SortBy, sort.SortOrder)
 
@@ -329,4 +331,56 @@ func GetStageHistory(ctx echo.Context) error {
 		Data:    &result{Pagination: *pagination, History: history},
 	})
 
+}
+
+// BeginGoogleAuth handler
+func BeginGoogleAuth(ctx echo.Context) error {
+	context := ctx.(*utils.CustomContext)
+
+	// Create oauthState cookie
+	oauthState := auth.GenerateOauthState()
+
+	cookie := http.Cookie{Name: "oauthstate", Value: oauthState, Expires: time.Now().Add(365 * 24 * time.Hour)}
+	context.SetCookie(&cookie)
+
+	/*
+		AuthCodeURL receive state that is a token to protect the user from CSRF attacks. You must always provide a non-empty string and
+		validate that it matches the the state query parameter on your redirect callback.
+	*/
+	redirectURL := auth.GoogleOauthConfig.AuthCodeURL(oauthState)
+
+	return context.Redirect(http.StatusTemporaryRedirect, redirectURL)
+}
+
+// CompleteGoogleAuth handler
+func CompleteGoogleAuth(ctx echo.Context) error {
+	context := ctx.(*utils.CustomContext)
+
+	oauthState, _ := context.Cookie("oauthstate")
+
+	if context.FormValue("state") != oauthState.Value {
+		return context.JSON(http.StatusBadRequest, &utils.StandartJSONResponse{
+			Status:  "error",
+			Message: "Invalid OAuth state",
+		})
+	}
+
+	data, err := auth.GetUserDataFromGoogle(context.FormValue("code"))
+	if err != nil {
+		context.Logger().Error(err)
+		return context.JSON(http.StatusBadRequest, &utils.StandartJSONResponse{
+			Status:  "error",
+			Message: "Auth error",
+		})
+	}
+
+	// GetOrCreate User in your db.
+	// Redirect or response with a token.
+	// More code .....
+	fmt.Printf("UserInfo: %s\n", data)
+
+	return context.JSON(http.StatusOK, &utils.StandartJSONResponse{
+		Status:  "success",
+		Message: "Ok",
+	})
 }
